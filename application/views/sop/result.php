@@ -64,8 +64,6 @@
 
 													<li class="active first">Pengajuan SOP<br>di unggah</li>
 													<li class="">SOP<br>Ditolak</li>
-													<h1>MAAF SOP ANDA DITOLAK KARENA SYARAT TIDAK TERPENUHI</h1>
-
 
 												<?php elseif ($row['status'] == 3) : ?>
 													<li class="active first">Pengajuan SOP<br>di unggah</li>

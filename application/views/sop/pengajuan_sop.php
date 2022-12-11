@@ -89,6 +89,10 @@
 													<label>
 														<input type="radio" name="status" value="5" <?= $key['status'] == '5' ? 'checked="true"' : '' ?>><span class="circle"></span><span class="check"></span> <?= $status['5'] ?>
 													</label>
+
+													<label style="margin: 10px">
+														<textarea name="note" placeholder="pesan (opsional)" style="width: 150%; padding: 10px 10px; margin: 8px 0; box-sizing: border-box; border: 1px solid grey; border-radius: 4px;" ></textarea>
+													</label>
 												</div>
 											</div>
 											<div class="modal-footer text-center">

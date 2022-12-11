@@ -18,7 +18,8 @@ class Sop extends CI_Controller
 
         $this->load->helper(array('form', 'url', 'Cookie', 'String'));
         $this->load->library('form_validation');
-        // $this->load->library('../controllers/emailSender');
+        error_reporting(0);
+        // $this->load->library('./controllers/email');
     }
 
     public function index()
@@ -50,7 +51,7 @@ class Sop extends CI_Controller
         $this->form_validation->set_rules('tempat_sop', 'Tempat SOP', 'required');
         $this->form_validation->set_rules('tanggal_sop', 'Tanggal SOP', 'required');
         $this->form_validation->set_rules('unit_sop', 'Unit', 'required');
-        // $this->form_validation->set_rules('file_surat', 'Keterangan', 'required');
+        $this->form_validation->set_rules('file', 'File', 'required');
 
         if ($this->form_validation->run() == FALSE) {
             $judul = [
@@ -97,24 +98,24 @@ class Sop extends CI_Controller
             $tanggal_sop = $this->input->post("tanggal_sop", TRUE);
             $unit_sop = $this->input->post("unit_sop", TRUE);
             $dateNow = date('Y-m-d');
-            // $file_surat =  $this->input->post("file_surat", TRUE);
+            $file =  $this->input->post("file", TRUE);
 
-            $config['upload_path'] = './uploads/sop';
+            $config['upload_path'] = './uploads/berkas';
             $config['allowed_types'] = 'pdf|doc|docx';
             $this->load->library('upload', $config);
 
-            if ($this->upload->do_upload('file_sop')) {
+            if ($this->upload->do_upload('file')) {
 
                 $data = array('upload_data' => $this->upload->data());
-                $file_sop = $data['upload_data']['file_name'];
+                $file = $data['upload_data']['file_name'];
                 
 
                 $save = [
                     'nama_sop' => $nama_sop,
-                    'tempat_sop' => date('Y-m-d', strtotime($tempat_sop)),
+                    'tempat_sop' => $tempat_sop,
                     'tanggal_sop' => date('Y-m-d', strtotime($tanggal_sop)),
                     'unit_sop' => $unit_sop,
-                    'file_sop' => $file_sop,
+                    'file' => $file,
                     'tanggal_upload' => date('Y-m-d', strtotime($dateNow))
                 ];
 
@@ -186,9 +187,7 @@ class Sop extends CI_Controller
             redirect(base_url("sop"));
         }
 
-        if ($_FILES['file']['name'] == null) {
-            $file = '-';
-        } else {
+        
             $namafile = substr($_FILES['file']['name'], -7);
             $file = $unit_sop . uniqid() . $namafile;
             $config['upload_path'] = './uploads/berkas';
@@ -202,7 +201,7 @@ class Sop extends CI_Controller
                 $data = array('upload_data' => $this->upload->data());
                 $berkas = $data['upload_data']['file_name'];
             }
-        }
+        
 
         $data = [
             'id' => $id,
@@ -222,22 +221,40 @@ class Sop extends CI_Controller
 
         
         $this->pengajuan_track->insert_sop($data);
-        $this->session->set_flashdata('success', '<div class="alert alert-success alert-dismissible"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button><h5><i class="icon fas fa-check"></i> Selamat!</h5> Berhasil Mengajukan Surat! Berikut <b>ID</b> anda: <b>' . $id . '</b></div>');
-        
-        $email_admin = $this->db->get_where('user', ['username' => "admin"])->row_array();
-        $email = $email_admin['email'];
-        $subject = "Pengajuan SOP Baru dari: ".$unit_sop;
-        $pesan = "
-        <p>
-            Berikut adalah pengajuan SOP baru dari:
-            Unit : " . $unit_sop . "<br>
-            Judul : " . $nama_sop . "<br>
-            Cek sekarang:
-            https://222011485.student.stis.ac.id/sop/pengajuan
-        </p>
-        ";
 
-        $this->sendMail($email, $subject, $pesan);
+        $pSop = $this->db->get_where('pengajuan_sop', ['id' => $id])->row_array();
+        $pUnit = $this->db->get_where('unit', ['id_unit' => $pSop['unit_sop']])->row_array();
+        
+        $admin = $this->db->get_where('user', ['username' => 'admin'])->row_array();
+        $email = $admin['email'];
+
+        if($email){
+            $subjek = "Pengajuan SOP Baru dari: ".$pUnit['nama'];
+            $pesan = "
+            <html>
+                <head>
+                    <title>PENGAJUAN SOP</title>
+                </head>
+                <body>
+                    <p>Berikut adalah pengajuan SOP baru: <br>
+                    ID : ".$id."<br>
+                    Nama SOP : ".$nama_sop."<br>
+                    Tempat : ".$tempat_sop."<br>
+                    Tanggal : ".$tanggal_sop."<br>
+                    Unit : ".$pUnit['nama']."<br>
+                    <br>
+                    Cek link berikut:
+                    <a href='https://222011485.student.stis.ac.id/sop/pengajuan'>Pengajuan SOP</a>
+                    </p>
+                </body>
+            </html>
+            ";
+
+            $this->sendMail($email, $subjek, $pesan);
+        }
+        
+        $this->db->get_where('pengajuan_sop', ['id' => $data['id']])->row_array();
+        $this->session->set_flashdata('success', '<div class="alert alert-success alert-dismissible"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button><h5><i class="icon fas fa-check"></i> Selamat!</h5> Berhasil Mengajukan Surat! Berikut <b>ID</b> anda: <b>' . $id . '</b></div>');
         redirect(base_url("sop"));
     }
 
@@ -246,7 +263,7 @@ class Sop extends CI_Controller
 
         $data = $this->db->get_where('pengajuan_sop', ['id' => $id])->row_array();
 
-        unlink("./uploads/sop/" . $data['file_sop']);
+        unlink("./uploads/berkas/" . $data['file']);
 
         $this->db->where(['id' => $id]);
 
@@ -283,23 +300,23 @@ class Sop extends CI_Controller
             $unit_sop = $this->input->post("unit_sop", TRUE);
             // $file_surat =  $this->input->post("file_surat", TRUE);
 
-            $config['upload_path'] = './uploads/sop';
+            $config['upload_path'] = './uploads/berkas';
             $config['allowed_types'] = 'pdf|doc|docx';
             $this->load->library('upload', $config);
 
-            if ($this->upload->do_upload('file_sop')) {
+            if ($this->upload->do_upload('file')) {
                 $data = $this->db->get_where('pengajuan_sop', ['id' => $id])->row_array();
-                unlink("./uploads/sop/" . $data['file_sop']);
+                unlink("./uploads/berkas/" . $data['file']);
 
                 $data = array('upload_data' => $this->upload->data());
-                $file_sop = $data['upload_data']['file_name'];
+                $file = $data['upload_data']['file_name'];
 
                 $update = [
                     'nama_sop' => $nama_sop,
                     'tempat_sop' => $tempat_sop,
                     'tanggal_sop' => date('Y-m-d', strtotime($tanggal_sop)),
                     'unit_sop' => $unit_sop,
-                    'file_sop' => $file_sop,
+                    'file' => $file,
                     'status' => 1
                 ];
 
@@ -393,15 +410,20 @@ class Sop extends CI_Controller
         ];
 
         $status = $this->input->post('status');
+        if (!$this->input->post('note')){
+            $note = '-';
+        } else {
+            $note = $this->input->post('note');
+        }
+        
 
         // var_dump($status);
         // die;
+        $pSop = $this->db->get_where('pengajuan_sop', ['id' => $id])->row_array();
+        $pUnit = $this->db->get_where('unit', ['id_unit' => $pSop['unit_sop']])->row_array();
+        $dateNow = date('Y-m-d');
 
         if ($status == 5) {
-            $pSop = $this->db->get_where('pengajuan_sop', ['id' => $id])->row_array();
-            $pUnit = $this->db->get_where('unit', ['id_unit' => $pSop['unit_sop']])->row_array();
-            $dateNow = date('Y-m-d');
-
             $save = [
                 'id' => $pSop['id'],
                 'nama_sop' => $pSop['nama_sop'],
@@ -411,18 +433,75 @@ class Sop extends CI_Controller
             ];
 
             $this->db->insert('sop_selesai', $save);
+
+            
+            $email = $pUnit['email'];
+
+            if($email){
+                $subjek = "Status Pengajuan SOP ".$id." diperbarui";
+                $pesan = "
+                <html>
+                    <head>
+                        <title>UPDATE STATUS</title>
+                    </head>
+                    <body>
+                        <p>SOP dengan informasi: <br>
+                        ID : ".$id."<br>
+                        Nama SOP : ".$pSop['nama_sop']."<br>
+                        Tempat : ".$pSop['$tempat_sop']."<br>
+                        Tanggal : ".$pSop['tanggal_sop']."<br>
+                        Unit : ".$pUnit['nama']."<br>
+                        <br>
+                        Telah divalidasi dan diterima. Dengan catatan sebagai berikut: <br>".$note."<br><br>                    
+                        
+                        Cek link berikut:
+                        <a href='https://222011485.student.stis.ac.id/tracking/tracked/".$id."'>SOP</a>
+                        </p>
+                    </body>
+                </html>
+                ";
+                $this->sendMail($email, $subjek, $pesan);
+            }
+            
+        } elseif ($status == 2) {
+            $email = $pUnit['email'];
+            if($email){
+                $subjek = "Pengajuan SOP ".$id." Tidak Memenuhi Syarat";
+                $pesan = "
+                <html>
+                    <head>
+                        <title>SOP DITOLAK</title>
+                    </head>
+                    <body>
+                        <p>SOP dengan informasi: <br>
+                        ID : ".$id."<br>
+                        Nama SOP : ".$pSop['nama_sop']."<br>
+                        Tempat : ".$pSop['$tempat_sop']."<br>
+                        Tanggal : ".$pSop['tanggal_sop']."<br>
+                        Unit : ".$pUnit['nama']."<br>
+                        <br>
+                        Tidak memenuhi syarat dan ditolak. Dengan catatan sebagai berikut: <br>".$note."<br><br>                    
+                        
+                        Cek link berikut:
+                        <a href='https://222011485.student.stis.ac.id/tracking/tracked/".$id."'>SOP</a>
+                        </p>
+                    </body>
+                </html>
+                ";
+
+                $this->sendMail($email, $subjek, $pesan);
+            }
+            
         }
-        ;
 
         $this->db->set('status', $status);
 
         $this->db->where(['id' => $id]);
         $this->db->update('pengajuan_sop');
 
-
         $this->session->set_flashdata('success', 'Status Pengajuan ID: ' . $id . ' Telah Diupdate!');
-
         redirect(base_url('sop/pengajuan'));
+        
     }
 
     public function hapusPengajuan($id)
@@ -470,49 +549,39 @@ class Sop extends CI_Controller
         redirect(base_url('sop/selesai'));
     }
 
-    public function sendMail($email, $subject, $pesan)
+    public function sendMail($email, $subjek, $pesan)
     {
-        $this->form_validation->set_rules('email', 'Email', 'required');
-        $this->form_validation->set_rules('subject', 'Subject', 'required');
-        $this->form_validation->set_rules('pesan', 'Pesan', 'required');
+        $config = Array(
+            'mailtype' => 'html',
+            'charset' => 'utf-8',
+            'protocol' => 'smtp',
+            'crlf' => "rn",
+            'mewline' => "rn",
+            'smtp_host' => 'smtp.googlemail.com',
+            'smtp_user' => 'nandyarzutami@gmail.com',
+            'smtp_pass' => 'rrzbtgftrcclcmkq',
+            'smtp_port' => 465,
+            'smtp_crypto' => 'ssl',
+            'smtp_timeout' => 5
 
-        if($this->form_validation->run()) {
+        );
 
+        $this->load->library('email', $config);
+        $this->email->set_newline("\r\n");
+        $this->email->initialize($config);
 
-            if(!empty($email)){
-                // configuration to email & process
-                $config = Array(
-                    'mailtype' => 'html',
-                    'charset' => 'utf-8',
-                    'protocol' => 'smtp',
-                    'crlf' => "rn",
-                    'mewline' => "rn",
-                    'smtp_host' => 'smtp.googlemail.com',
-                    'smtp_user' => 'nandyarzutami@gmail.com',
-                    'smtp_pass' => 'rrzbtgftrcclcmkq',
-                    'smtp_port' => 465,
-                    'smtp_crypto' => 'ssl',
-                    'smtp_timeout' => 5
+        // end config
 
-                );
+        $this->email->from('emailfrom');
+        $this->email->to($email);
+        $this->email->subject($subjek);
+        $this->email->message($pesan);
 
-                $this->load->library('email', $config);
-                $this->email->set_newline("\r\n");
-                $this->email->initialize($config);
-
-                // end config
-
-                $this->email->from('emailfrom');
-                $this->email->to($email);
-                $this->email->subject($subject);
-                $this->email->message($pesan);
-
-                if($this->email->send()){
-                    echo "email berhasil";
-                } else{
-                    show_error($this->email->print_debugger());
-                }
-            }
+        if($this->email->send()){
+        } else{
+            show_error($this->email->print_debugger());
         }
+    
+        
     }
 }

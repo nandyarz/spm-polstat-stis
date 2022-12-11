@@ -4,7 +4,7 @@
             <div class="col-md-12">
                 <div class="card">
                 
-                    <?php echo form_open_multipart('Email/SendMail'); ?>
+                    <?php echo form_open_multipart('Email/sendMail'); ?>
                     <!-- <form id="RegisterValidation" action="" method=""> -->
                     <div class="card-header card-header-icon" data-background-color="rose">
                         <i class="material-icons">mail_outline</i>

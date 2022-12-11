@@ -9,7 +9,6 @@ class Email extends CI_Controller {
 
         $this->load->helper('url');
         error_reporting(0);
-        $this->load->helper('url');
 
     }
 
@@ -24,7 +23,7 @@ class Email extends CI_Controller {
         $this->load->view('templates/footer');
     }
 
-    public function SendMail($email, $subject, $pesan)
+    public function sendMail()
     {
         $this->form_validation->set_rules('email', 'Email', 'required');
         $this->form_validation->set_rules('subject', 'Subject', 'required');
